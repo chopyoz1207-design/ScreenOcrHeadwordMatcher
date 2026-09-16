@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build V2 APK
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,13 +17,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Unzip project
-        run: unzip -q project.zip -d project
+        run: unzip -q BuildFirstV2_project.zip -d project
 
       - name: Build debug APK
         working-directory: project
@@ -31,5 +40,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ScreenOcrHeadwordMatcher-apk
+          name: BuildFirstV2-apk
           path: project/app/build/outputs/apk/debug/app-debug.apk
