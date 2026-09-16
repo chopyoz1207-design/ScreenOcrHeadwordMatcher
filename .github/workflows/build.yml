@@ -1,4 +1,4 @@
-name: Build V2 APK
+name: Build V2 APK + Verify
 
 on:
   workflow_dispatch:
@@ -48,16 +48,38 @@ jobs:
           rm -rf project
           mkdir project
           unzip -q BuildFirstV2_project.zip -d project
-          echo "Project contents:"
-          find project -maxdepth 3 -type f | sort
 
       - name: Build debug APK
         working-directory: project
         run: gradle :app:assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Verify APK identity and permissions
+        shell: bash
+        run: |
+          APK="project/app/build/outputs/apk/debug/app-debug.apk"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+
+          echo "===== APK SHA-256 ====="
+          sha256sum "$APK"
+
+          echo "===== PACKAGE / VERSION / SDK ====="
+          "$AAPT" dump badging "$APK" | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^application-label:"
+
+          echo "===== REQUESTED PERMISSIONS ====="
+          PERMS="$("$AAPT" dump permissions "$APK" | grep "uses-permission" || true)"
+          if [ -z "$PERMS" ]; then
+            echo "NO REQUESTED PERMISSIONS"
+          else
+            echo "$PERMS"
+          fi
+
+          echo "===== SIGNING CERTIFICATE ====="
+          "$APKSIGNER" verify --print-certs "$APK"
+
+      - name: Upload verified APK
         uses: actions/upload-artifact@v4
         with:
-          name: BuildFirstV2-apk
+          name: BuildFirstV2-verified
           path: project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
